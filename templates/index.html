@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medikal AI — Doğum Riski Analiz Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0a0e14;
+    --surface:    #111820;
+    --surface2:   #182030;
+    --border:     #1e2e42;
+    --accent:     #00d4ff;
+    --accent2:    #ff4c6a;
+    --accent3:    #00ff9d;
+    --text:       #e8f0fe;
+    --muted:      #7a92b0;
+    --card-glow:  0 0 40px rgba(0,212,255,0.06);
+    --mono:       'Space Mono', monospace;
+    --serif:      'DM Serif Display', serif;
+    --sans:       'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(10px);
+    background: rgba(10,14,20,0.85);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), #0057ff);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 20px rgba(0,212,255,0.4);
+  }
+  .logo-text { font-family: var(--mono); font-size: 14px; line-height: 1.4; }
+  .logo-text strong { color: var(--accent); font-size: 16px; display: block; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    animation: pulse-border 3s ease infinite;
+  }
+  @keyframes pulse-border {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.3); }
+    50% { box-shadow: 0 0 12px 2px rgba(0,212,255,0.15); }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    position: relative; z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 48px 80px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    margin-bottom: 48px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 32px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 em { color: var(--accent); font-style: italic; }
+  .hero p { margin-top: 12px; color: var(--muted); font-size: 15px; max-width: 520px; }
+
+  .metrics-strip {
+    display: flex; gap: 2px;
+    background: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .metric-pill {
+    background: var(--surface);
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 90px;
+  }
+  .metric-pill .val {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--accent3);
+    display: block;
+  }
+  .metric-pill .lbl {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+  .tab-btn {
+    background: none; border: none; outline: none;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted);
+    padding: 12px 24px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── PREDICT LAYOUT ── */
+  .predict-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: var(--card-glow);
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ── FORM GROUPS ── */
+  .form-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 28px;
+  }
+  .form-section-title {
+    grid-column: 1/-1;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-top: 8px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .field label span { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+  .field select option { background: var(--surface2); }
+
+  .hint { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+  /* ── SUBMIT ── */
+  .btn-predict {
+    width: 100%;
+    margin-top: 28px;
+    padding: 16px;
+    background: linear-gradient(135deg, #0057ff, var(--accent));
+    border: none; border-radius: 10px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .btn-predict::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .btn-predict:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,255,0.3); }
+  .btn-predict:hover::after { opacity: 1; }
+  .btn-predict:active { transform: none; }
+
+  /* ── RESULT PANEL ── */
+  .result-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 400px;
+    display: flex; flex-direction: column;
+  }
+  .result-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .result-body {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .result-idle {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    color: var(--muted);
+  }
+  .idle-icon {
+    width: 72px; height: 72px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    animation: spin-slow 20s linear infinite;
+  }
+  @keyframes spin-slow { to { transform: rotate(360deg); } }
+
+  .result-output { display: none; width: 100%; }
+  .result-output.visible { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+
+  /* Gauge */
+  .gauge-wrap { position: relative; width: 180px; height: 100px; }
+  .gauge-svg { width: 100%; }
+  .gauge-track { fill: none; stroke: var(--border); stroke-width: 12; }
+  .gauge-fill  { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1); }
+  .gauge-label {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono); font-size: 28px; font-weight: 700;
+    color: var(--text);
+  }
+  .gauge-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+
+  .verdict {
+    font-family: var(--serif);
+    font-size: 22px;
+    line-height: 1.2;
+    padding: 12px 20px;
+    border-radius: 8px;
+    width: 100%;
+  }
+  .verdict.positive { background: rgba(255,76,106,0.12); border: 1px solid rgba(255,76,106,0.4); color: #ff6b85; }
+  .verdict.negative { background: rgba(0,255,157,0.08); border: 1px solid rgba(0,255,157,0.3); color: var(--accent3); }
+
+  .result-detail {
+    width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .detail-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .detail-item .dk { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .detail-item .dv { font-family: var(--mono); font-size: 13px; color: var(--text); }
+
+  .risk-bar-wrap { width: 100%; }
+  .risk-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted); margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+  .risk-bar-track {
+    height: 8px; background: var(--surface2);
+    border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .risk-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 1s cubic-bezier(0.34,1.56,0.64,1);
+    width: 0%;
+  }
+
+  /* ── MODELS TABLE ── */
+  .models-grid { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 14px;
+    font-size: 13px; color: var(--text);
+    border-bottom: 1px solid rgba(30,46,66,0.5);
+    transition: background 0.15s;
+  }
+  tr:hover td { background: rgba(0,212,255,0.03); }
+  tr.best-row td { background: rgba(0,212,255,0.04); }
+  tr.best-row td:first-child { border-left: 2px solid var(--accent); }
+  .best-badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.15);
+    color: var(--accent);
+    font-family: var(--mono); font-size: 9px;
+    padding: 2px 7px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-left: 6px;
+  }
+  .bar-cell { display: flex; align-items: center; gap: 8px; }
+  .mini-bar {
+    height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    min-width: 4px;
+  }
+  .num-val { font-family: var(--mono); font-size: 12px; }
+
+  /* ── ABOUT / ARCHITECTURE ── */
+  .arch-flow {
+    display: flex; flex-direction: column; gap: 0;
+    margin: 24px 0;
+  }
+  .arch-node {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--mono); font-size: 12px;
+    position: relative;
+  }
+  .arch-node + .arch-node { margin-top: 6px; }
+  .arch-node + .arch-node::before {
+    content: '↓';
+    position: absolute; top: -18px; left: 28px;
+    color: var(--muted); font-size: 12px;
+  }
+  .arch-node .node-icon { font-size: 18px; }
+  .arch-node .node-info { flex: 1; }
+  .arch-node .node-name { color: var(--accent); }
+  .arch-node .node-desc { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .arch-node .node-size {
+    font-size: 11px; color: var(--text);
+    background: var(--border); padding: 3px 8px; border-radius: 4px;
+  }
+
+  .info-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px; margin-top: 24px;
+  }
+  .info-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .info-item .ik { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .info-item .iv { font-family: var(--mono); font-size: 15px; color: var(--accent3); }
+
+  /* ── LOADING SPINNER ── */
+  .spinner {
+    display: none;
+    width: 24px; height: 24px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    main { padding: 24px 20px 60px; }
+    header { padding: 16px 20px; }
+    .predict-grid { grid-template-columns: 1fr; }
+    .form-sections { grid-template-columns: 1fr; }
+    .hero { grid-template-columns: 1fr; }
+    .metrics-strip { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🤰</div>
+    <div class="logo-text">
+      <strong>MATERNAL AI</strong>
+      Doğum Riski Analiz Sistemi
+    </div>
+  </div>
+  <div class="badge">● Canlı Model</div>
+</header>
+
+<main>
+  <div class="hero">
+    <div>
+      <h1>Yapay Sinir Ağı ile<br><em>Doğum Riski</em> Analizi</h1>
+      <p>PyTorch tabanlı 6 katmanlı derin öğrenme modeli. Maternal sağlık veri seti üzerinde eğitilmiş, risk faktörlerini erken tespit etmek için geliştirilmiştir.</p>
+    </div>
+    <div class="metrics-strip">
+      <div class="metric-pill">
+        <span class="val">96.97%</span>
+        <span class="lbl">Accuracy</span>
+      </div>
+      <div class="metric-pill">
+        <span class="val">0.9964</span>
+        <span class="lbl">ROC-AUC</span>
+      </div>
+      <div class="metric-pill">
+        <span class="val">0.9552</span>
+        <span class="lbl">F1 Score</span>
+      </div>
+      <div class="metric-pill">
+        <span class="val">800</span>
+        <span class="lbl">Epoch</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('predict')">🔬 Tahmin</button>
+    <button class="tab-btn" onclick="showTab('models')">📊 Model Karşılaştırma</button>
+    <button class="tab-btn" onclick="showTab('about')">🧠 Mimari & Bilgi</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-predict">
+    <div class="predict-grid">
+      <div class="card">
+        <div class="card-title">Hasta Parametreleri</div>
+        <div class="form-sections">
+
+          <div class="form-section-title">Kimlik & Fiziksel Bilgiler</div>
+          <div class="field">
+            <label>Hasta ID <span id="lbl-pid">—</span></label>
+            <input type="text" id="patient_id" placeholder="örn: PT-1002" oninput="lbl('patient_id','lbl-pid','')">
+            <div class="hint">Sistem kayıt numarası</div>
+          </div>
+          <div class="field">
+            <label>Yaş <span id="lbl-age">—</span></label>
+            <input type="number" id="age" min="15" max="60" placeholder="örn: 28" oninput="lbl('age','lbl-age','')">
+            <div class="hint">Anne adayı yaşı (yıl)</div>
+          </div>
+          <div class="field">
+            <label>Cinsiyet</label>
+            <select id="sex">
+              <option value="0" selected>Kadın (0)</option>
+            </select>
+            <div class="hint">Maternal analiz (Varsayılan)</div>
+          </div>
+          <div class="field">
+            <label>BMI (kg/m²) <span id="lbl-bmi">—</span></label>
+            <input type="number" step="0.1" id="bmi" min="15" max="50" placeholder="örn: 24.5" oninput="lbl('bmi','lbl-bmi','')">
+            <div class="hint">Vücut Kitle İndeksi</div>
+          </div>
+
+          <div class="form-section-title">Hayati Bulgular (Vitals)</div>
+          <div class="field">
+            <label>Vücut Sıcaklığı (F) <span id="lbl-temp">—</span></label>
+            <input type="number" step="0.1" id="body_temp" min="95" max="105" placeholder="örn: 98.6" oninput="lbl('body_temp','lbl-temp',' °F')">
+            <div class="hint">Vücut sıcaklığı (Fahrenheit)</div>
+          </div>
+          <div class="field">
+            <label>Kalp Hızı <span id="lbl-hr">—</span></label>
+            <input type="number" id="heart_rate" min="50" max="150" placeholder="örn: 85" oninput="lbl('heart_rate','lbl-hr',' bpm')">
+            <div class="hint">Dakikadaki atım sayısı (bpm)</div>
+          </div>
+          <div class="field">
+            <label>Sistolik KB <span id="lbl-sbp">—</span></label>
+            <input type="number" id="systolic_bp" min="80" max="200" placeholder="örn: 120" oninput="lbl('systolic_bp','lbl-sbp',' mmHg')">
+            <div class="hint">Büyük tansiyon (mmHg)</div>
+          </div>
+          <div class="field">
+            <label>Diyastolik KB <span id="lbl-dbp">—</span></label>
+            <input type="number" id="diastolic_bp" min="40" max="130" placeholder="örn: 80" oninput="lbl('diastolic_bp','lbl-dbp',' mmHg')">
+            <div class="hint">Küçük tansiyon (mmHg)</div>
+          </div>
+
+          <div class="form-section-title">Kan Şekeri Değerleri</div>
+          <div class="field">
+            <label>Kan Şekeri (HbA1c) <span id="lbl-hba1c">—</span></label>
+            <input type="number" step="0.1" id="hba1c" min="3" max="15" placeholder="örn: 5.5" oninput="lbl('hba1c','lbl-hba1c',' %')">
+            <div class="hint">Glikozillenmiş hemoglobin oranı</div>
+          </div>
+          <div class="field">
+            <label>Açlık Kan Şekeri <span id="lbl-fbg">—</span></label>
+            <input type="number" id="fasting_glucose" min="50" max="300" placeholder="örn: 95" oninput="lbl('fasting_glucose','lbl-fbg',' mg/dl')">
+            <div class="hint">Açlık durumundaki glikoz (mg/dl)</div>
+          </div>
+
+        </div>
+        <button class="btn-predict" onclick="runPrediction()">
+          ⚡ TAHMİN ÇALIŞTIR
+        </button>
+      </div>
+
+      <div class="result-panel">
+        <div class="result-header">/ analiz sonucu</div>
+        <div class="result-body">
+          <div class="result-idle" id="result-idle">
+            <div class="idle-icon">⚕</div>
+            <div style="font-size:13px;">Parametreleri doldurun<br>ve tahmin çalıştırın</div>
+          </div>
+
+          <div class="spinner" id="spinner"></div>
+
+          <div class="result-output" id="result-output">
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 180 100">
+                <path class="gauge-track" d="M 15 90 A 75 75 0 0 1 165 90"/>
+                <path class="gauge-fill" id="gauge-fill" d="M 15 90 A 75 75 0 0 1 165 90"
+                  stroke-dasharray="235" stroke-dashoffset="235" stroke="#00d4ff"/>
+              </svg>
+              <div class="gauge-label">
+                <span id="gauge-pct">0%</span>
+                <div class="gauge-sub">Risk Skoru</div>
+              </div>
+            </div>
+
+            <div class="verdict" id="verdict-box">—</div>
+
+            <div class="risk-bar-wrap">
+              <div class="risk-bar-label">
+                <span>DÜŞÜK</span><span>ORTA</span><span>YÜKSEK</span>
+              </div>
+              <div class="risk-bar-track">
+                <div class="risk-bar-fill" id="risk-bar"></div>
+              </div>
+            </div>
+
+            <div class="result-detail">
+              <div class="detail-item">
+                <div class="dk">Olasılık</div>
+                <div class="dv" id="d-prob">—</div>
+              </div>
+              <div class="detail-item">
+                <div class="dk">Karar</div>
+                <div class="dv" id="d-pred">—</div>
+              </div>
+              <div class="detail-item">
+                <div class="dk">Eşik Değeri</div>
+                <div class="dv" id="d-thr">0.5266</div>
+              </div>
+              <div class="detail-item">
+                <div class="dk">Risk Seviyesi</div>
+                <div class="dv" id="d-risk">—</div>
+              </div>
+            </div>
+
+            <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.5;padding:0 8px;">
+              ⚠ Bu sistem yalnızca araştırma ve eğitim amaçlıdır. Klinik karar desteği için kullanılamaz.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-models">
+    <div class="card">
+      <div class="card-title">Eğitilen Model Karşılaştırması — 10 Model</div>
+      <div class="models-grid">
+        <table id="models-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Mimari</th>
+              <th>Aktivasyon</th>
+              <th>Optimizer</th>
+              <th>Accuracy</th>
+              <th>F1</th>
+              <th>ROC-AUC</th>
+              <th>Precision</th>
+              <th>Recall</th>
+            </tr>
+          </thead>
+          <tbody id="models-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-about">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div class="card">
+        <div class="card-title">Model Mimarisi (En İyi Model)</div>
+        <div class="arch-flow">
+          <div class="arch-node">
+            <span class="node-icon">📥</span>
+            <div class="node-info">
+              <div class="node-name">Giriş Katmanı</div>
+              <div class="node-desc">9 maternal özellik → StandardScaler normalizasyonu</div>
+            </div>
+            <div class="node-size">9</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔷</span>
+            <div class="node-info">
+              <div class="node-name">Dense + BatchNorm + ReLU</div>
+              <div class="node-desc">Dropout: 0.25 (sadece eğitimde)</div>
+            </div>
+            <div class="node-size">256</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔷</span>
+            <div class="node-info">
+              <div class="node-name">Dense + BatchNorm + ReLU</div>
+              <div class="node-desc"></div>
+            </div>
+            <div class="node-size">128</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔷</span>
+            <div class="node-info">
+              <div class="node-name">Dense + BatchNorm + ReLU</div>
+              <div class="node-desc"></div>
+            </div>
+            <div class="node-size">96</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔷</span>
+            <div class="node-info">
+              <div class="node-name">Dense + BatchNorm + ReLU</div>
+              <div class="node-desc"></div>
+            </div>
+            <div class="node-size">64</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔷</span>
+            <div class="node-info">
+              <div class="node-name">Dense + BatchNorm + ReLU</div>
+              <div class="node-desc"></div>
+            </div>
+            <div class="node-size">32</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">🔶</span>
+            <div class="node-info">
+              <div class="node-name">Dense + ReLU</div>
+              <div class="node-desc">Son gizli katman</div>
+            </div>
+            <div class="node-size">16</div>
+          </div>
+          <div class="arch-node">
+            <span class="node-icon">📤</span>
+            <div class="node-info">
+              <div class="node-name">Çıkış (Sigmoid)</div>
+              <div class="node-desc">Eşik: 0.5266 → Sınıf 0 / 1</div>
+            </div>
+            <div class="node-size">1</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-title">Eğitim Hiperparametreleri</div>
+          <div class="info-grid">
+            <div class="info-item"><div class="ik">Optimizer</div><div class="iv">RMSprop</div></div>
+            <div class="info-item"><div class="ik">Learning Rate</div><div class="iv">0.0003</div></div>
+            <div class="info-item"><div class="ik">Max Epoch</div><div class="iv">800</div></div>
+            <div class="info-item"><div class="ik">Dropout</div><div class="iv">0.25</div></div>
+            <div class="info-item"><div class="ik">Batch Norm</div><div class="iv">Evet</div></div>
+            <div class="info-item"><div class="ik">Aktivasyon</div><div class="iv">ReLU</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Girdi Özellikleri (9 Parametre)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <div style="display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:12px;">
+              <span style="font-family:var(--mono);color:var(--accent)">patient_id</span><span style="color:var(--muted)">Sistem Hasta Kayıt Numarası</span>
+              <span style="font-family:var(--mono);color:var(--accent)">age</span><span style="color:var(--muted)">Anne adayının yaşı (yıl)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">bmi</span><span style="color:var(--muted)">Vücut Kitle İndeksi (kg/m²)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">body_temp</span><span style="color:var(--muted)">Vücut Sıcaklığı (°F)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">heart_rate</span><span style="color:var(--muted)">Kalp Hızı (bpm)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">systolic_bp</span><span style="color:var(--muted)">Sistolik Kan Basıncı (Büyük tansiyon - mmHg)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">diastolic_bp</span><span style="color:var(--muted)">Diyastolik Kan Basıncı (Küçük tansiyon - mmHg)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">hba1c</span><span style="color:var(--muted)">Kan Şekeri (Glikozillenmiş hemoglobin - %)</span>
+              <span style="font-family:var(--mono);color:var(--accent)">fasting_glucose</span><span style="color:var(--muted)">Açlık Kan Şekeri (mg/dl)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── TAB SWITCH ──
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'models') renderModelsTable();
+}
+
+// ── LABEL LIVE UPDATE ──
+function lbl(inputId, labelId, suffix) {
+  const v = document.getElementById(inputId).value;
+  document.getElementById(labelId).textContent = v ? v + suffix : '—';
+}
+
+// ── MODELS TABLE ──
+const ALL_MODELS = [
+  {"name":"M10_relu_rmsprop_6layer_800ep","hidden_layers":"[256, 128, 96, 64, 32, 16]","activation":"relu","optimizer":"rmsprop","lr":0.0003,"dropout":0.25,"batch_norm":true,"epochs":800,"threshold":0.5266,"accuracy":0.9697,"precision":0.9540,"recall":0.9563,"f1":0.9552,"roc_auc":0.9964},
+  {"name":"M7_relu_adam_4layer_500ep","hidden_layers":"[128, 64, 32, 16]","activation":"relu","optimizer":"adam","lr":0.0005,"dropout":0.20,"batch_norm":true,"epochs":500,"threshold":0.5769,"accuracy":0.9689,"precision":0.9746,"recall":0.9320,"f1":0.9529,"roc_auc":0.9958},
+  {"name":"M4_classic_tanh_sgd_300ep","hidden_layers":"[32, 16]","activation":"tanh","optimizer":"sgd","lr":0.0100,"dropout":0.10,"batch_norm":false,"epochs":300,"threshold":0.5987,"accuracy":0.9615,"precision":0.9484,"recall":0.9369,"f1":0.9426,"roc_auc":0.9928},
+  {"name":"M5_elu_rmsprop_3layer_400ep","hidden_layers":"[64, 32, 16]","activation":"elu","optimizer":"rmsprop","lr":0.0010,"dropout":0.15,"batch_norm":true,"epochs":400,"threshold":0.5354,"accuracy":0.9590,"precision":0.9480,"recall":0.9296,"f1":0.9387,"roc_auc":0.9920},
+  {"name":"M8_leakyrelu_adam_4layer_500ep","hidden_layers":"[128, 64, 32, 16]","activation":"leakyrelu","optimizer":"adam","lr":0.0005,"dropout":0.20,"batch_norm":true,"epochs":500,"threshold":0.4885,"accuracy":0.9574,"precision":0.9433,"recall":0.9296,"f1":0.9364,"roc_auc":0.9943},
+  {"name":"M9_relu_adam_5layer_700ep","hidden_layers":"[128, 96, 64, 32, 16]","activation":"relu","optimizer":"adam","lr":0.0003,"dropout":0.25,"batch_norm":true,"epochs":700,"threshold":0.4782,"accuracy":0.9566,"precision":0.9284,"recall":0.9442,"f1":0.9362,"roc_auc":0.9931},
+  {"name":"M3_classic_relu_adam_300ep","hidden_layers":"[32, 16]","activation":"relu","optimizer":"adam","lr":0.0010,"dropout":0.10,"batch_norm":true,"epochs":300,"threshold":0.6193,"accuracy":0.9533,"precision":0.9494,"recall":0.9102,"f1":0.9294,"roc_auc":0.9916},
+  {"name":"M6_relu_adam_3layer_500ep","hidden_layers":"[64, 32, 16]","activation":"relu","optimizer":"adam","lr":0.0005,"dropout":0.20,"batch_norm":true,"epochs":500,"threshold":0.5596,"accuracy":0.9517,"precision":0.9294,"recall":0.9272,"f1":0.9283,"roc_auc":0.9913},
+  {"name":"M2_small_relu_adam_200ep","hidden_layers":"[16]","activation":"relu","optimizer":"adam","lr":0.0010,"dropout":0.00,"batch_norm":false,"epochs":200,"threshold":0.5814,"accuracy":0.9500,"precision":0.9398,"recall":0.9102,"f1":0.9248,"roc_auc":0.9849},
+  {"name":"M1_small_relu_adam_100ep","hidden_layers":"[8]","activation":"relu","optimizer":"adam","lr":0.0010,"dropout":0.00,"batch_norm":false,"epochs":100,"threshold":0.4321,"accuracy":0.8952,"precision":0.8087,"recall":0.9029,"f1":0.8532,"roc_auc":0.9694}
+];
+
+function renderModelsTable() {
+  const tbody = document.getElementById('models-tbody');
+  if (tbody.children.length > 0) return;
+  ALL_MODELS.forEach((m, i) => {
+    const best = i === 0;
+    const row = document.createElement('tr');
+    if (best) row.className = 'best-row';
+    const bar = (v, max=1) => `<div class="bar-cell"><div class="mini-bar" style="width:${Math.round(v/max*80)}px"></div><span class="num-val">${v.toFixed(4)}</span></div>`;
+    row.innerHTML = `
+      <td style="font-family:var(--mono);font-size:11px;">${m.name}${best ? '<span class="best-badge">BEST</span>' : ''}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${m.hidden_layers}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${m.activation}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${m.optimizer}</td>
+      <td>${bar(m.accuracy)}</td>
+      <td>${bar(m.f1)}</td>
+      <td>${bar(m.roc_auc)}</td>
+      <td>${bar(m.precision)}</td>
+      <td>${bar(m.recall)}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// ── PREDICTION ──
+async function runPrediction() {
+  // GÜNCELLENEN DEĞİŞKENLER
+  const fields = ['patient_id', 'age', 'sex', 'body_temp', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'bmi', 'hba1c', 'fasting_glucose'];
+  const data = {};
+  for (const f of fields) {
+    const v = document.getElementById(f).value;
+    if (v === '' || v === null) {
+      alert(`Lütfen tüm alanları doldurun: "${f}" eksik.`);
+      return;
+    }
+    // Patient ID metin olarak (string) kalmalı, geri kalan sayı (float)
+    data[f] = (f === 'patient_id') ? v : parseFloat(v);
+  }
+
+  // Show spinner
+  document.getElementById('result-idle').style.display = 'none';
+  document.getElementById('result-output').classList.remove('visible');
+  document.getElementById('spinner').style.display = 'block';
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+
+    if (result.error) throw new Error(result.error);
+
+    // Hide spinner, show output
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('result-output').classList.add('visible');
+
+    // Animate gauge
+    const pct = result.probability;
+    const offset = 235 - (pct / 100) * 235;
+    const fill = document.getElementById('gauge-fill');
+    fill.style.strokeDashoffset = offset;
+    fill.style.stroke = pct >= 60 ? '#ff4c6a' : (pct >= 35 ? '#ffd166' : '#00ff9d');
+    document.getElementById('gauge-pct').textContent = pct.toFixed(1) + '%';
+
+    // Verdict
+    const verdict = document.getElementById('verdict-box');
+    verdict.className = 'verdict ' + (result.prediction === 1 ? 'positive' : 'negative');
+    verdict.textContent = result.label;
+
+    // Risk bar
+    const bar = document.getElementById('risk-bar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct >= 60
+      ? 'linear-gradient(90deg,#ff4c6a,#ff1a40)'
+      : pct >= 35
+        ? 'linear-gradient(90deg,#ffd166,#ff8c00)'
+        : 'linear-gradient(90deg,#00ff9d,#00d4ff)';
+
+    // Details
+    document.getElementById('d-prob').textContent = pct.toFixed(2) + '%';
+    document.getElementById('d-pred').textContent = result.prediction === 1 ? 'POZİTİF (1)' : 'NEGATİF (0)';
+    document.getElementById('d-thr').textContent = (result.threshold * 100).toFixed(2) + '%';
+    const riskMap = { HIGH: '🔴 YÜKSEK', MEDIUM: '🟡 ORTA', LOW: '🟢 DÜŞÜK' };
+    document.getElementById('d-risk').textContent = riskMap[result.risk_level] || result.risk_level;
+
+  } catch(e) {
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('result-idle').style.display = 'flex';
+    alert('Tahmin hatası: ' + e.message);
+  }
+}
+</script>
+
+</body>
+</html>
