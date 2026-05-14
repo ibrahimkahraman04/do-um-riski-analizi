@@ -2,7 +2,7 @@ import streamlit as st
 from app import predict_with_model, MODEL_INFO, FEATURE_NAMES
 
 st.set_page_config(
-    page_title="Maternal Risk AI",
+    page_title="Doğum Risk AI",
     page_icon="🤰",
     layout="centered",
     initial_sidebar_state="collapsed"
