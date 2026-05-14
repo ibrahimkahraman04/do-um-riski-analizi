@@ -272,7 +272,7 @@ hr { border-color: rgba(255,255,255,0.08) !important; }
 <!-- Hero Header -->
 <div class="hero-header">
     <div class="hero-badge">🤖 &nbsp; AI Destekli Analiz</div>
-    <div class="hero-title">Maternal Risk<br>Analiz Sistemi</div>
+    <div class="hero-title">Doğum Risk<br>Analiz Sistemi</div>
     <div class="hero-sub">PyTorch tabanlı 6 katmanlı derin öğrenme ile doğum riski tahmini</div>
 </div>
 
